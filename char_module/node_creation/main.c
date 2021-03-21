@@ -7,6 +7,7 @@
 #include <linux/version.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
+#include <asm/uaccess.h>
 
 // Global variable to define the first of dev_t type which holds major and minor number
 static dev_t first;
@@ -14,6 +15,7 @@ static dev_t first;
 static struct cdev c_dev;
 // Global varible for the device class.
 static struct class *dev_class;
+static char c;
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Saurabh Bhamra");
@@ -32,11 +34,17 @@ static int dev_close(struct inode *i, struct file *f) {
 
 static ssize_t dev_read(struct file *f, char __user *buff, size_t count, loff_t *offp) {
 	printk(KERN_INFO "Read!!\n");
-	return 0;
+	if(copy_to_user(buff, &c, 1) != 0) {
+		return -EFAULT;
+	}
+	return 1;
 }
 
 static ssize_t dev_write(struct file *f, const char __user *buff, size_t count, loff_t *off) {
 	printk(KERN_INFO "Write!!\n");
+	if (copy_from_user(&c, buff+count-1, 1) != 0) {
+		return -EFAULT;
+	}
 	return count;
 }
 
