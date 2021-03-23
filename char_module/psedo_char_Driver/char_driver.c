@@ -3,8 +3,9 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/kdev_t.h>
+#include <linux/uaccess.h>
 
-#define DEV_SIZE 512
+#define DEV_MEM_SIZE 512
 #undef pr_fmt
 #define pr_fmt(fmt) "%s :" fmt,__func__
 
@@ -12,7 +13,7 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Saurabh Bhamra");
 MODULE_DESCRIPTION("A simple character driver");
 
-char dev_buff[DEV_SIZE];
+char dev_buff[DEV_MEM_SIZE];
 static dev_t dev_num;
 
 /* Initialize the cdev structure. */
@@ -20,19 +21,81 @@ struct cdev char_cdev;
 struct class *dev_class;
 struct device *char_device;
 
-static loff_t dev_lseek(struct file *filp, loff_t off, int whence) {
+static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
+	loff_t temp;
 	pr_info("lseek requested.\n");
-	return 0;
+	pr_info("Current value of the file position %lld\n", filp->f_pos);
+
+	switch(whence) {
+		case SEEK_SET:{
+			if((offset > DEV_MEM_SIZE) || (offset < 0)) {
+				return -EINVAL;
+			}
+			filp->f_pos = offset;
+			break;
+		}
+		case SEEK_CUR: {
+			temp = filp->f_pos + offset;
+			if((temp > DEV_MEM_SIZE) || (temp < 0)) {
+				return -EINVAL;
+			}
+			filp->f_pos = temp;
+			break;
+		}
+		case SEEK_END: {
+			temp = DEV_MEM_SIZE + offset;
+			if((temp > DEV_MEM_SIZE) || (temp < 0)) {
+				return -EINVAL;
+			}
+			filp->f_pos = temp;
+			break;
+		}
+		default: {
+			return -EINVAL;
+		}
+	}
+	pr_info("New value of the file position %lld\n", filp->f_pos);
+	return filp->f_pos;
 }
 
 static ssize_t dev_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos) {
 	pr_info("Device Read requested for %zu bytes\n", count);
-	return 0;
+	pr_info("Current file position: %lld\n", *f_pos);
+
+	if(*f_pos + count > DEV_MEM_SIZE) {
+		count = DEV_MEM_SIZE - *f_pos;
+	}
+	if(copy_to_user(buff, &dev_buff[*f_pos], count)) {
+		return -EFAULT;
+	}
+	*f_pos += count;
+
+	pr_info("Number of bytes Successfully read: %zu bytes\n", count);
+	pr_info("Updated file position  = %lld\n", *f_pos);
+
+	return count;
 }
 
 static ssize_t dev_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos) {
 	pr_info("Device write requested for %zu bytes\n", count);
-	return 0;
+	pr_info("Current file position: %lld\n", *f_pos);
+
+	if(*f_pos + count > DEV_MEM_SIZE) {
+		count = DEV_MEM_SIZE - *f_pos;
+	}
+	if(!count){
+		pr_err("No space left on the deivce driver memory\n.");
+		return -ENOMEM;
+	}
+	if(copy_from_user(&dev_buff[*f_pos], buff, count)) {
+		return -EFAULT;
+	}
+	*f_pos += count;
+
+	pr_info("Number of bytes Successfully read: %zu bytes\n", count);
+	pr_info("Updated file position  = %lld\n", *f_pos);
+
+	return count;
 }
 
 static int dev_open(struct inode *inode, struct file *filep) {
