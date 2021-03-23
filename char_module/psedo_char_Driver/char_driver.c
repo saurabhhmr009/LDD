@@ -122,22 +122,45 @@ static int init_charDrive(void){
 	int ret;
 	ret  = alloc_chrdev_region(&dev_num , 0, 1, "chrDevice");
 	if(ret < 0) {
-		printk(KERN_INFO "Device number registration failed.\n");
-		return ret;
+		pr_info("Device number registration failed.\n");
+		goto out;
 	}
 	pr_info("Device number Major:Minor = %d:%d\n", MAJOR(dev_num), MINOR(dev_num));
 
 	cdev_init(&char_cdev, &char_fops);
 	char_cdev.owner = THIS_MODULE;
 
-	cdev_add(&char_cdev, dev_num, 1);
+	ret  = cdev_add(&char_cdev, dev_num, 1);
+	if(ret < 0) {
+		pr_info("Char structure registration failed\n");
+		goto unreg_chrdev;
+	}
 
 	dev_class = class_create(THIS_MODULE, "char_class");
+	if(IS_ERR(dev_class)) {
+		pr_err("Class creation failed\n");
+		ret = PTR_ERR(dev_class);
+		goto cdev_del;
+	}
 
 	char_device = device_create(dev_class, NULL, dev_num, NULL, "chrnull");
+	if(IS_ERR(char_device)) {
+		pr_err("Device creation failed\n");
+		ret = PTR_ERR(char_device);
+		goto class_del;
+	}
 
 	pr_info("Device registration is done successful!!!\n");
 	return 0;
+
+class_del:
+	class_destroy(dev_class);
+cdev_del:
+	cdev_del(&char_cdev);
+unreg_chrdev:
+	unregister_chrdev_region(dev_num, 1);
+out:
+	return ret;
 }
 
 static void exit_charDrive(void){
