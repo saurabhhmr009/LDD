@@ -72,13 +72,15 @@ struct chrdrv_private_data chrdrv_data = {
 };
 
 static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
-	/*loff_t temp;
+	struct chrdev_private_data *chrdev_data = (struct chrdev_private_data *)filp->private_data;
+	int max_size = chrdev_data->size;
+	loff_t temp;
 	pr_info("lseek requested.\n");
 	pr_info("Current value of the file position %lld\n", filp->f_pos);
 
 	switch(whence) {
 		case SEEK_SET:{
-			if((offset > DEV_MEM_SIZE) || (offset < 0)) {
+			if((offset > max_size) || (offset < 0)) {
 				return -EINVAL;
 			}
 			filp->f_pos = offset;
@@ -86,15 +88,15 @@ static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
 		}
 		case SEEK_CUR: {
 			temp = filp->f_pos + offset;
-			if((temp > DEV_MEM_SIZE) || (temp < 0)) {
+			if((temp > max_size) || (temp < 0)) {
 				return -EINVAL;
 			}
 			filp->f_pos = temp;
 			break;
 		}
 		case SEEK_END: {
-			temp = DEV_MEM_SIZE + offset;
-			if((temp > DEV_MEM_SIZE) || (temp < 0)) {
+			temp = max_size + offset;
+			if((temp > max_size) || (temp < 0)) {
 				return -EINVAL;
 			}
 			filp->f_pos = temp;
@@ -105,8 +107,7 @@ static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
 		}
 	}
 	pr_info("New value of the file position %lld\n", filp->f_pos);
-	return filp->f_pos;*/
-	return 0;
+	return filp->f_pos;
 }
 
 static ssize_t dev_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos) {
