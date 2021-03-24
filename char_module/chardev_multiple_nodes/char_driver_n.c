@@ -131,17 +131,20 @@ static ssize_t dev_read(struct file *filp, char __user *buff, size_t count, loff
 }
 
 static ssize_t dev_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos) {
-	/*pr_info("Device write requested for %zu bytes\n", count);
+	struct chrdev_private_data *chrdev_data = (struct chrdev_private_data *)filp->private_data;
+	int max_size = chrdev_data->size;
+
+	pr_info("Device write requested for %zu bytes\n", count);
 	pr_info("Current file position: %lld\n", *f_pos);
 
-	if(*f_pos + count > DEV_MEM_SIZE) {
-		count = DEV_MEM_SIZE - *f_pos;
+	if(*f_pos + count > max_size) {
+		count = max_size - *f_pos;
 	}
 	if(!count){
 		pr_err("No space left on the deivce driver memory\n.");
 		return -ENOMEM;
 	}
-	if(copy_from_user(&dev_buff[*f_pos], buff, count)) {
+	if(copy_from_user(chrdev_data->buffer+(*f_pos), buff, count)) {
 		return -EFAULT;
 	}
 	*f_pos += count;
@@ -149,8 +152,7 @@ static ssize_t dev_write(struct file *filp, const char __user *buff, size_t coun
 	pr_info("Number of bytes Successfully read: %zu bytes\n", count);
 	pr_info("Updated file position  = %lld\n", *f_pos);
 
-	return count;*/
-	return 0;
+	return count;
 }
 
 int check_permission(void) {
