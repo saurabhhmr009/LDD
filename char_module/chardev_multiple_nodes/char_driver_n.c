@@ -10,6 +10,9 @@
 #define DEV_MEM_SIZE2 512
 #define DEV_MEM_SIZE3 1024
 #define DEV_MEM_SIZE4 512
+#define RDONLY 0x01
+#define WRONLY 0x10
+#define RDWR 0x11
 
 
 #undef pr_fmt
@@ -48,25 +51,25 @@ struct chrdrv_private_data chrdrv_data = {
 			.buffer = dev_buff1,
 			.size = DEV_MEM_SIZE1,
 			.serial_number = "CHRDEV123X0",
-			.permission = 0x1 /*RDONLY*/
+			.permission = RDONLY /*RDONLY*/
 		},
 		[1] = {
 			.buffer = dev_buff2,
 			.size = DEV_MEM_SIZE2,
 			.serial_number = "CHRDEV123X1",
-			.permission = 0x10
+			.permission = WRONLY
 		},
 		[2] = {
 			.buffer = dev_buff3,
 			.size = DEV_MEM_SIZE3,
 			.serial_number = "CHRDEV123X2",
-			.permission = 0x11
+			.permission = RDWR
 		},
 		[3] = {
 			.buffer = dev_buff4,
 			.size = DEV_MEM_SIZE4,
 			.serial_number = "CHRDEV123X3",
-			.permission = 0x11
+			.permission = RDWR
 		}
 	}
 };
@@ -156,8 +159,17 @@ static ssize_t dev_write(struct file *filp, const char __user *buff, size_t coun
 	return count;
 }
 
-int check_permission(void) {
-	return 0;
+int check_permission(int dev_perm, int acc_mode) {
+	if (dev_perm == RDWR) {
+		return 0;
+	}
+	if ((dev_perm == RDONLY) && ((acc_mode & FMODE_READ) && !(acc_mode & FMODE_WRITE))) {
+		return 0;
+	}
+	if ((dev_perm == WRONLY) && ((acc_mode & FMODE_WRITE) && !(acc_mode & FMODE_READ))) {
+		return 0;
+	}
+	return -EPERM;
 }
 
 static int dev_open(struct inode *inode, struct file *filep) {
@@ -170,7 +182,7 @@ static int dev_open(struct inode *inode, struct file *filep) {
 	chrdev_data = container_of(inode->i_cdev, struct chrdev_private_data, char_cdev);
 	filep->private_data = chrdev_data;
 
-	ret = check_permission();
+	ret = check_permission(chrdev_data->permission, filep->f_mode);
 	(!ret)?pr_info("Open was successful\n"):pr_info("Open was unsuccessful\n");
 	return ret;
 }
