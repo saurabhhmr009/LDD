@@ -17,7 +17,7 @@
 
 // Define macros for the permissions.
 #define RDONLY 0x01
-#define WRONLY 0x01
+#define WRONLY 0x10
 #define RDWR 0x11
 
 //Define macro for total number of devices
@@ -39,7 +39,7 @@ struct chrdev_private_data {
 	unsigned int size; 				// Holds the MAX memory size of the device.
 	const char *serial_number;		// Holds the serial number of the device.
 	int permission;					// Holds the permission in which the device could be accessed(RDWR,RDONLY,WRONLY etc.)
-	struct cdev char_dev;			// Every device will have its own cdev structure registered with VHS.
+	struct cdev char_cdev;			// Every device will have its own cdev structure registered with VHS.
 };
 
 //Define a structure which holds the private data for the driver.
@@ -77,7 +77,7 @@ struct chrdrv_private_data chrdrv_data = {
 			.buffer = dev_buff4,
 			.size = DEV4_MEM_SIZE,
 			.serial_number = "CHRDEVXYZ04",
-			.permission = WRONLY
+			.permission = RDWR
 		}
 	}
 };
@@ -100,7 +100,47 @@ int check_permission(int device_perm, int access_mode) {
 
 // Device function to change the seek position of f_pos
 static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
-	return 0;
+	struct chrdev_private_data *chrdev_data;
+	int mem_size;
+	loff_t temp;
+
+	pr_info("lseek requested.\n");
+	pr_info("Current value of the file position %lld\n", filp->f_pos);
+
+	chrdev_data = (struct chrdev_private_data *)filp->private_data;
+	mem_size = chrdev_data->size;
+
+	switch(whence) {
+		case SEEK_SET: {
+			if((offset > mem_size) || (offset < 0)) {
+				return -EINVAL;
+			}
+			filp->f_pos = offset;
+			break;
+		}
+		case SEEK_CUR: {
+			temp = filp->f_pos + offset;
+			if((temp > mem_size) || (offset < 0)) {
+				return -EINVAL;
+			}
+			filp->f_pos = temp;
+			break;
+		}
+		case SEEK_END: {
+			temp = mem_size + offset;
+			if((temp > mem_size) || (offset < 0)) {
+				return -EINVAL;
+			}
+			filp->f_pos = temp;
+			break;
+		}
+		default: {
+			return -EINVAL;
+		}
+	}
+
+	pr_info("New value of the file position %lld\n", filp->f_pos);
+	return filp->f_pos;
 }
 
 // Device function to read the data from the device to user space.
@@ -173,7 +213,7 @@ static int dev_open (struct inode *inode, struct file *filp) {
 	pr_info("Minor number of the device is %d.\n", minor_num);
 
 	// container_of macro calculates the starting address of the struct from its members address.
-	chrdev_data = container_of(inode->i_cdev, struct chrdev_private_data, char_dev);
+	chrdev_data = container_of(inode->i_cdev, struct chrdev_private_data, char_cdev);
 	filp->private_data = chrdev_data;
 
 	ret = check_permission(chrdev_data->permission, filp->f_mode);
@@ -184,6 +224,7 @@ static int dev_open (struct inode *inode, struct file *filp) {
 
 // Device function to close the device file.
 static int dev_close(struct inode *inode, struct file *filp){
+	pr_info("File closed successfully.\n");
 	return 0;
 }
 
@@ -220,15 +261,15 @@ static int __init chr_driver_init(void) {
 		pr_info("Major and Minor number are %d and %d\n", MAJOR(chrdrv_data.device_number + i), MINOR(chrdrv_data.device_number + i));
 
 		// Initialize and add the char structure with the VHS.
-		cdev_init(&chrdrv_data.chrdev_data[i].char_dev, &char_ops);
-		chrdrv_data.chrdev_data[i].char_dev.owner = THIS_MODULE;
-		ret = cdev_add(&chrdrv_data.chrdev_data[i].char_dev, chrdrv_data.device_number + i, 1);
+		cdev_init(&chrdrv_data.chrdev_data[i].char_cdev, &char_ops);
+		chrdrv_data.chrdev_data[i].char_cdev.owner = THIS_MODULE;
+		ret = cdev_add(&chrdrv_data.chrdev_data[i].char_cdev, chrdrv_data.device_number + i, 1);
 		if(ret < 0) {
 			pr_err("Character device structure initialization failed.\n");
 			goto char_del;
 		}
 
-		chrdrv_data.char_device = device_create(chrdrv_data.char_class, NULL, chrdrv_data.device_number, NULL, "chrdrv%d", i);
+		chrdrv_data.char_device = device_create(chrdrv_data.char_class, NULL, chrdrv_data.device_number + i, NULL, "chrdrv%d", i);
 		if(IS_ERR(chrdrv_data.char_device)) {
 			pr_err("Device creation failed.\n");
 			goto dev_del;
@@ -241,13 +282,13 @@ static int __init chr_driver_init(void) {
 dev_del:
 	for(; i>=0; i--) {
 		device_destroy(chrdrv_data.char_class, chrdrv_data.device_number + i);
-		cdev_del(&chrdrv_data.chrdev_data[i].char_dev);
+		cdev_del(&chrdrv_data.chrdev_data[i].char_cdev);
 	}
 	class_destroy(chrdrv_data.char_class);
 
 char_del:
 	for(; i>=0; i--) {
-		cdev_del(&chrdrv_data.chrdev_data[i].char_dev);
+		cdev_del(&chrdrv_data.chrdev_data[i].char_cdev);
 	}
 	class_destroy(chrdrv_data.char_class);
 
@@ -262,7 +303,7 @@ static void __exit chr_driver_exit(void) {
 	int i;
 	for(i = 0; i<NO_OF_DEVICES; i++) {
 		device_destroy(chrdrv_data.char_class, chrdrv_data.device_number + i);
-		cdev_del(&chrdrv_data.chrdev_data[i].char_dev);
+		cdev_del(&chrdrv_data.chrdev_data[i].char_cdev);
 	}
 	class_destroy(chrdrv_data.char_class);
 	unregister_chrdev_region(chrdrv_data.device_number, NO_OF_DEVICES);
@@ -271,3 +312,8 @@ static void __exit chr_driver_exit(void) {
 
 module_init(chr_driver_init);
 module_exit(chr_driver_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Saurabh Bhamra");
+MODULE_DESCRIPTION("A simple character driver with n devices");
+MODULE_VERSION("1.0");
