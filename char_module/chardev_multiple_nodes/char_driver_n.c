@@ -47,6 +47,37 @@ struct chrdrv_private_data {
 	struct chrdev_private_data chrdev_data[NO_OF_DEVICES];
 };
 
+// Initialize the chrdrv_private_data structure.
+struct chrdrv_private_data chrdrv_data = {
+	.total_devices = NO_OF_DEVICES,
+	.chrdev_data = {
+		[0] = {
+			.buffer = dev_buff1,
+			.size = DEV1_MEM_SIZE,
+			.serial_number = "CHRDEVXYZ00",
+			.permission  = RDONLY
+		},
+		[1] = {
+			.buffer = dev_buff2,
+			.size = DEV2_MEM_SIZE,
+			.serial_number = "CHRDEVXYZ01",
+			.permission = WRONLY
+		},
+		[2] = {
+			.buffer = dev_buff3,
+			.size = DEV3_MEM_SIZE,
+			.serial_number = "CHRDEVXYZ02",
+			.permission = RDWR
+		},
+		[3] = {
+			.buffer = dev_buff4,
+			.size = DEV4_MEM_SIZE,
+			.serial_number = "CHRDEVXYZ04",
+			.permission = WRONLY
+		}
+	}
+};
+
 // Device function to change the seek position of f_pos
 static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
 	return 0;
