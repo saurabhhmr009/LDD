@@ -139,19 +139,35 @@ static int __init chr_driver_init(void) {
 	for(i = 0; i<NO_OF_DEVICES; i++) {
 		pr_info("Major and Minor number are %d and %d\n", MAJOR(chrdrv_data.device_number + i), MINOR(chrdrv_data.device_number + i));
 
+		// Initialize and add the char structure with the VHS.
 		cdev_init(&chrdrv_data.chrdev_data[i].char_dev, &char_ops);
 		ret = cdev_add(&chrdrv_data.chrdev_data[i].char_dev, chrdrv_data.device_number + i, 1);
 		if(ret < 0) {
 			pr_err("Character device structure initialization failed.\n");
+			goto char_del;
+		}
+
+		chrdrv_data.char_device = device_create(chrdrv_data.char_class, NULL, chrdrv_data.device_number, NULL, "chrdrv%d", i);
+		if(IS_ERR(chrdrv_data.char_device)) {
+			pr_err("Device creation failed.\n");
 			goto dev_del;
 		}
 	}
 	return 0;
 
+// Definations of the all goto functions(Might be wrong).
 dev_del:
+	for(; i>=0; i--) {
+		device_destroy(chrdrv_data.char_class, chrdrv_data.device_number + i);
+		cdev_del(&chrdrv_data.chrdev_data[i].char_dev);
+	}
+	class_destroy(chrdrv_data.char_class);
+
+char_del:
 	for(; i>=0; i--) {
 		cdev_del(&chrdrv_data.chrdev_data[i].char_dev);
 	}
+	class_destroy(chrdrv_data.char_class);
 
 unregister_chrdev:
 	unregister_chrdev_region(chrdrv_data.device_number, NO_OF_DEVICES);
