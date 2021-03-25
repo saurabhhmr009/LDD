@@ -23,6 +23,10 @@
 //Define macro for total number of devices
 #define NO_OF_DEVICES 4
 
+// Define macro for the printing of messages.
+#undef pr_fmt
+#define pr_fmt(fmt) "%s :" fmt,__func__
+
 //Define char arrays which will be used in the Kernel Space.
 char dev_buff1[DEV1_MEM_SIZE];
 char dev_buff2[DEV2_MEM_SIZE];
@@ -115,7 +119,31 @@ struct file_operations char_ops = {
 
 
 static int __init chr_driver_init(void) {
+	int ret, i;
+
+	// Get the Device number for the driver
+	ret = alloc_chrdev_region(&chrdrv_data.device_number, 0, NO_OF_DEVICES, "chardriver");
+	if(ret < 0) {
+		pr_info("Unable to get the device number for the driver.\n");
+		goto out;
+	}
+
+	chrdrv_data.char_class = class_create(THIS_MODULE, "chrdev");
+	if(IS_ERR(chrdrv_data.char_class)) {
+		pr_info("Failed to register the class for the driver\n");
+		ret = PTR_ERR(chrdrv_data.char_class);
+		goto unregister_chrdev;
+	}
+
+	for(i = 0; i<NO_OF_DEVICES; i++) {
+		pr_info("Major and Minor number are %d and %d\n", MAJOR(chrdrv_data.device_number + i), MINOR(chrdrv_data.device_number + i));
+	}
 	return 0;
+
+unregister_chrdev:
+	unregister_chrdev_region(chrdrv_data.device_number, NO_OF_DEVICES);
+out:
+	return ret;
 }
 
 static void __exit chr_driver_exit(void) {
