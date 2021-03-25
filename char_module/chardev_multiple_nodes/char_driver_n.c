@@ -105,12 +105,63 @@ static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
 
 // Device function to read the data from the device to user space.
 static ssize_t dev_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos) {
-	return 0;
+	struct chrdev_private_data *chrdev_data;
+	int mem_size;
+
+	pr_info("Number of bytes requested to read: %zu bytes.\n", count);
+	pr_info("Current file position = %lld.\n", *f_pos);
+
+	chrdev_data = (struct chrdev_private_data *)filp->private_data;
+	mem_size = chrdev_data->size;
+
+	// Trimming is done here. User can't request for the read more than max_mem size of the device.
+	if((*f_pos + count) > mem_size) {
+		count = mem_size - *f_pos;
+	}
+
+	// Copies the data from the Kernel space buffer to the User space buffer.
+	if(copy_to_user(buff, chrdev_data->buffer+(*f_pos), count)) {
+		return -EFAULT;
+	}
+	*f_pos += count;
+
+	pr_info("Number of bytes Successfully read: %zu bytes\n", count);
+	pr_info("Updated file position  = %lld\n", *f_pos);
+
+	return count;
 }
 
 // Device function to write the data from user space to device.
 static ssize_t dev_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos) {
-	return 0;
+	struct chrdev_private_data *chrdev_data;
+	int mem_size;
+
+	pr_info("Number of bytes requested to write: %zu bytes.\n", count);
+	pr_info("Current file position = %lld.\n", *f_pos);
+
+	chrdev_data = (struct chrdev_private_data *)filp->private_data;
+	mem_size = chrdev_data->size;
+
+	// Trimming done in the write section too.
+	if((*f_pos + count) > mem_size) {
+		count = mem_size - *f_pos;
+	}
+
+	// if count is 0, no space left on the device.(Need to check). 
+	if(!count) {
+		pr_info("No space left on the device.\n");
+		return -ENOMEM;
+	}
+
+	// Copies data from user space buffer to the Kernel space buffer.
+	if(copy_from_user(chrdev_data->buffer+(*f_pos), buff, count)) {
+		return -EFAULT;
+	}
+	*f_pos += count;
+
+	pr_info("Number of bytes Successfully read: %zu bytes\n", count);
+	pr_info("Updated file position  = %lld\n", *f_pos);
+	return count;
 }
 
 // Device function to open the device file.
