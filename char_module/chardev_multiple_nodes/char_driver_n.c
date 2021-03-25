@@ -82,6 +82,22 @@ struct chrdrv_private_data chrdrv_data = {
 	}
 };
 
+// Function to check the permissions of a device.
+int check_permission(int device_perm, int access_mode) {
+	if(device_perm == RDWR){
+		return 0;
+	}
+	if((device_perm == RDONLY) && ((access_mode & FMODE_READ) && !(access_mode & FMODE_WRITE))) {
+		return 0;
+	}
+	if((device_perm == WRONLY) && ((access_mode & FMODE_WRITE) && !(access_mode & FMODE_READ))) {
+		return 0;
+	}
+
+	// Returns invalid parameter if no permission is matched.
+	return -EPERM;
+}
+
 // Device function to change the seek position of f_pos
 static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
 	return 0;
@@ -99,7 +115,20 @@ static ssize_t dev_write(struct file *filp, const char __user *buff, size_t coun
 
 // Device function to open the device file.
 static int dev_open (struct inode *inode, struct file *filp) {
-	return 0;
+	int minor_num, ret;
+	struct chrdev_private_data *chrdev_data;
+
+	minor_num = MINOR(inode->i_rdev);
+	pr_info("Minor number of the device is %d.\n", minor_num);
+
+	// container_of macro calculates the starting address of the struct from its members address.
+	chrdev_data = container_of(inode->i_cdev, struct chrdev_private_data, char_dev);
+	filp->private_data = chrdev_data;
+
+	ret = check_permission(chrdev_data->permission, filp->f_mode);
+	(!ret)?pr_info("Open was successful.\n"):pr_info("Open was unsuccessful.\n");
+
+	return ret;
 }
 
 // Device function to close the device file.
@@ -176,7 +205,6 @@ unregister_chrdev:
 
 out:
 	return ret;
-
 }
 
 static void __exit chr_driver_exit(void) {
