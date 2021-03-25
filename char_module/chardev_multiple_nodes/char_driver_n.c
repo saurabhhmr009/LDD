@@ -47,6 +47,41 @@ struct chrdrv_private_data {
 	struct chrdev_private_data chrdev_data[NO_OF_DEVICES];
 };
 
+// Device function to change the seek position of f_pos
+static loff_t dev_lseek(struct file *filp, loff_t offset, int whence) {
+	return 0;
+}
+
+// Device function to read the data from the device to user space.
+static ssize_t dev_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos) {
+	return 0;
+}
+
+// Device function to write the data from user space to device.
+static ssize_t dev_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos) {
+	return 0;
+}
+
+// Device function to open the device file.
+static int dev_open (struct inode *inode, struct file *filp) {
+	return 0;
+}
+
+// Device function to close the device file.
+static int dev_close(struct inode *inode, struct file *filp){
+	return 0;
+}
+
+// Define a structure which maps the system calls with the device define calls.
+struct file_operations char_ops = {
+	.owner = THIS_MODULE,
+	.open = dev_open,
+	.release  = dev_close,
+	.read = dev_read,
+	.write = dev_write,
+	.llseek = dev_lseek
+};
+
 
 static int __init chr_driver_init(void) {
 	return 0;
