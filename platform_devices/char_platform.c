@@ -135,12 +135,22 @@ int char_platform_probe(struct platform_device *pdevice) {
         return ret;
     }
 
+    dev_set_drvdata(&pdevice->dev, dev_data);
+    pdrv_data.total_devices++;
     pr_info("Probe was successful.\n");
     return 0;
 }
 
-// Function gets called when device is removed.
+// Function gets called when device is removed. Cleanups the memory held by platform devices.
 int  char_platform_remove(struct platform_device *pdevice) {
+    struct chardev_pvtdata *dev_data = dev_get_drvdata(&pdevice->dev);
+
+    device_destroy(pdrv_data.chardrv_class, dev_data->dev_num);
+    cdev_del(&dev_data->char_cdev);
+    kfree(dev_data->buffer);
+    kfree(dev_data);
+
+    pdrv_data.total_devices--;
     pr_info("A device is removed.\n");
     return 0;
 }
