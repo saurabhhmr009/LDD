@@ -5,6 +5,12 @@ MODULE_AUTHOR("Saurabh Bhamra");
 MODULE_DESCRIPTION("Platform device code.");
 MODULE_VERSION("1.0");
 
+
+// Function to release the dynamically allocated memory in platform devices
+void platform_release(struct device *dev) {
+    pr_info("Device released.\n");
+}
+
 // Initialize the platform data of the devices
 struct platform_dev_data pform_data[2] = {
     [0] = {
@@ -25,7 +31,8 @@ struct platform_device platform_dev1 = {
     .name = "char-device",
     .id = 0,
     .dev = {
-        .platform_data = &pform_data[0]
+        .platform_data = &pform_data[0],
+        .release = platform_release
     }
 };
 
@@ -33,7 +40,8 @@ struct platform_device platform_dev2 = {
     .name = "char-device",
     .id = 2,
     .dev = {
-        .platform_data = &pform_data[1]
+        .platform_data = &pform_data[1],
+        .release = platform_release
     }
 };
 
@@ -41,6 +49,7 @@ struct platform_device platform_dev2 = {
 static int __init platform_dev_init(void) {
     platform_device_register(&platform_dev1);
     platform_device_register(&platform_dev2);
+    pr_info("Platform device inserted.\n");
     return 0;
 }
 
@@ -48,6 +57,7 @@ static int __init platform_dev_init(void) {
 static void __exit platform_dev_exit(void) {
     platform_device_unregister(&platform_dev1);
     platform_device_unregister(&platform_dev2);
+    pr_info("Platform device removed.\n");
 }
 
 // Initialize the  init and exit methods.

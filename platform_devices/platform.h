@@ -8,6 +8,10 @@
 #define dev_size1 512
 #define dev_size2 1024
 
+// Define macro for the printing of messages.
+#undef pr_fmt
+#define pr_fmt(fmt) "%s :" fmt,__func__
+
 // Structure for the private data of the platform device
 struct platform_dev_data {
     int size;
