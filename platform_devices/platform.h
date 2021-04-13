@@ -12,6 +12,7 @@
 #define RDWR 0x11
 #define dev_size1 512
 #define dev_size2 1024
+#define NO_OF_DEVICES 2
 
 // Define macro for the printing of messages.
 #undef pr_fmt
