@@ -7,18 +7,6 @@ MODULE_AUTHOR("Saurabh Bhamra");
 MODULE_DESCRIPTION("Platform driver code.");
 MODULE_VERSION("1.1");
 
-// Function gets called when device is inserted.
-int char_platform_probe(struct platform_device *pdriver) {
-    pr_info("A device is detected.\n");
-    return 0;
-}
-
-// Function gets called when device is removed.
-int  char_platform_remove(struct platform_device *pdriver) {
-    pr_info("A device is removed.\n");
-    return 0;
-}
-
 // Create the private data structure for the device
 struct chardev_pvtdata {
     struct platform_dev_data platform_pvtdata;
@@ -85,6 +73,77 @@ struct file_operations char_platform_ops = {
     .release = char_platform_close,
     .llseek = char_platform_lseek
 };
+
+// Function gets called when device is inserted.
+int char_platform_probe(struct platform_device *pdevice) {
+    int ret;
+    struct chardev_pvtdata *dev_data;
+    struct platform_dev_data *platform_pvtdata;
+
+    pr_info("A device is detected.\n");
+
+    // Check for the platform data provided by the device.
+    platform_pvtdata = (struct platform_dev_data*)dev_get_platdata(&pdevice->dev);
+    if(platform_pvtdata == NULL) {
+        pr_info("No platform data available.\n");
+        return -EINVAL;
+    }
+
+    // Assign the memory dynamically to store the platform data
+    dev_data = kzalloc(sizeof(*dev_data), GFP_KERNEL);
+    if(!dev_data) {
+        pr_info("Failed to allocate the memory.\n");\
+        return -ENOMEM;
+    }
+
+    // Copy data from platform device to dev_data
+    dev_data->platform_pvtdata.size = platform_pvtdata->size;
+    dev_data->platform_pvtdata.permission = platform_pvtdata->permission;
+    dev_data->platform_pvtdata.serial_number = platform_pvtdata->serial_number;
+
+    pr_info("Device serial number: %s\n", dev_data->platform_pvtdata.serial_number );
+    pr_info("Device size: %d\n", dev_data->platform_pvtdata.size);
+    pr_info("Device permission: %d\n", dev_data->platform_pvtdata.permission);
+
+    // Dynamically allocate the memory of the buffer in Device pvt data structure
+    dev_data->buffer = kzalloc(sizeof(dev_data->platform_pvtdata.size), GFP_KERNEL);
+    if(!dev_data->buffer) {
+        pr_info("Failed to allocate for the buffer.\n");
+        kfree(dev_data);
+        return -ENOMEM;
+    }
+
+    // Get the device number for the probe function.
+    dev_data->dev_num = pdrv_data.dev_base + pdevice->id;
+
+    // cdev functions
+    cdev_init(&dev_data->char_cdev, &char_platform_ops);
+    dev_data->char_cdev.owner = THIS_MODULE;
+
+    ret = cdev_add(&dev_data->char_cdev, dev_data->dev_num, 1);
+    if(ret < 0) {
+        pr_info("cdev for the device failed.\n");
+        kfree(dev_data->buffer);
+        kfree(dev_data);
+        return ret;
+    }
+
+    pdrv_data.chardrv_dev = device_create(pdrv_data.chardrv_class, NULL, dev_data->dev_num, NULL, "chrdrv%d", pdevice->id);
+    if(IS_ERR(pdrv_data.chardrv_dev)) {
+        pr_err("Device creation failed.\n");
+        ret = PTR_ERR(pdrv_data.chardrv_dev);
+        return ret;
+    }
+
+    pr_info("Probe was successful.\n");
+    return 0;
+}
+
+// Function gets called when device is removed.
+int  char_platform_remove(struct platform_device *pdevice) {
+    pr_info("A device is removed.\n");
+    return 0;
+}
 
 // Initialize the platform driver structure.
 struct platform_driver chardev_platform = {

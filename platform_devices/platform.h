@@ -5,6 +5,7 @@
 #include <linux/kdev_t.h>
 #include <linux/uaccess.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 
 // Define the permissions and size for platform device
 #define RDONLY 0x01
