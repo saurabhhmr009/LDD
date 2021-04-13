@@ -90,7 +90,8 @@ int char_platform_probe(struct platform_device *pdevice) {
     }
 
     // Assign the memory dynamically to store the platform data
-    dev_data = kzalloc(sizeof(*dev_data), GFP_KERNEL);
+    //dev_data = kzalloc(sizeof(*dev_data), GFP_KERNEL);
+    dev_data = devm_kzalloc(&pdevice->dev, sizeof(*dev_data), GFP_KERNEL);
     if(!dev_data) {
         pr_info("Failed to allocate the memory.\n");\
         return -ENOMEM;
@@ -106,10 +107,11 @@ int char_platform_probe(struct platform_device *pdevice) {
     pr_info("Device permission: %d\n", dev_data->platform_pvtdata.permission);
 
     // Dynamically allocate the memory of the buffer in Device pvt data structure
-    dev_data->buffer = kzalloc(sizeof(dev_data->platform_pvtdata.size), GFP_KERNEL);
+    //dev_data->buffer = kzalloc(sizeof(dev_data->platform_pvtdata.size), GFP_KERNEL);
+    dev_data->buffer = devm_kzalloc(&pdevice->dev, sizeof(dev_data->platform_pvtdata.size), GFP_KERNEL);
     if(!dev_data->buffer) {
         pr_info("Failed to allocate for the buffer.\n");
-        kfree(dev_data);
+        devm_kfree(&pdevice->dev, dev_data);
         return -ENOMEM;
     }
 
@@ -123,8 +125,8 @@ int char_platform_probe(struct platform_device *pdevice) {
     ret = cdev_add(&dev_data->char_cdev, dev_data->dev_num, 1);
     if(ret < 0) {
         pr_info("cdev for the device failed.\n");
-        kfree(dev_data->buffer);
-        kfree(dev_data);
+        devm_kfree(&pdevice->dev, dev_data->buffer);
+        devm_kfree(&pdevice->dev, dev_data);
         return ret;
     }
 
@@ -147,8 +149,8 @@ int  char_platform_remove(struct platform_device *pdevice) {
 
     device_destroy(pdrv_data.chardrv_class, dev_data->dev_num);
     cdev_del(&dev_data->char_cdev);
-    kfree(dev_data->buffer);
-    kfree(dev_data);
+    //kfree(dev_data->buffer);
+    //kfree(dev_data);
 
     pdrv_data.total_devices--;
     pr_info("A device is removed.\n");
