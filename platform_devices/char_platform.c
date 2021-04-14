@@ -157,10 +157,32 @@ int  char_platform_remove(struct platform_device *pdevice) {
     return 0;
 }
 
+// Initialize the structure array for the device id matching.
+struct platform_device_id pdev_array[] = {
+    [0] = {
+        .name = "pcdev-A1x"
+    },
+
+    [1] = {
+        .name = "pcdev-A2x"
+    },
+
+    [2] = {
+        .name = "pcdev-A3x"
+    },
+
+    [3] = {
+        .name = "pcdev-A4x"
+    },
+
+    { }
+};
+
 // Initialize the platform driver structure.
 struct platform_driver chardev_platform = {
     .probe = char_platform_probe,
     .remove = char_platform_remove,
+    .id_table = pdev_array,
     .driver = {
         .name = "char-device"
     }

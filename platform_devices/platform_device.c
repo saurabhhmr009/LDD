@@ -40,7 +40,7 @@ struct platform_dev_data pform_data[4] = {
 
 // Initialize the platform device structure instances
 struct platform_device platform_dev1 = {
-    .name = "char-device",
+    .name = "pcdev-A1x",
     .id = 0,
     .dev = {
         .platform_data = &pform_data[0],
@@ -49,7 +49,7 @@ struct platform_device platform_dev1 = {
 };
 
 struct platform_device platform_dev2 = {
-    .name = "char-device",
+    .name = "pcdev-A2x",
     .id = 1,
     .dev = {
         .platform_data = &pform_data[1],
@@ -58,7 +58,7 @@ struct platform_device platform_dev2 = {
 };
 
 struct platform_device platform_dev3 = {
-    .name = "char-device",
+    .name = "pcdev-A3x",
     .id = 2,
     .dev = {
         .platform_data = &pform_data[2],
@@ -67,7 +67,8 @@ struct platform_device platform_dev3 = {
 };
 
 struct platform_device platform_dev4 = {
-    .name = "char-device",
+    //.name = "char-device",
+    .name = "pcdev-A4x",
     .id = 3,
     .dev = {
         .platform_data = &pform_data[3],
