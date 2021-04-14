@@ -7,6 +7,68 @@ MODULE_AUTHOR("Saurabh Bhamra");
 MODULE_DESCRIPTION("Platform driver code.");
 MODULE_VERSION("1.1");
 
+// Enum defined to simplify the notations
+enum pdev_names {
+    PCDEVA1X,
+    PCDEVA2X,
+    PCDEVA3X,
+    PCDEVA4X
+};
+
+// Structure which supplies the data from the driver to device after matching is done
+struct device_confriguation {
+    int config_item1;
+    int config_item2;
+};
+
+// Initialize the device data
+struct device_confriguation pdev_data[] = {
+    [PCDEVA1X] = {
+        .config_item1 = 50,
+        .config_item2 = 30
+    },
+
+    [PCDEVA2X] = {
+        .config_item1 = 51,
+        .config_item2 = 29
+    },
+
+    [PCDEVA3X] = {
+        .config_item1 = 52,
+        .config_item2 = 28
+    },
+
+    [PCDEVA4X] = {
+        .config_item1 = 53,
+        .config_item2 = 27
+    }
+};
+
+// Initialize the structure array for the device id matching.
+struct platform_device_id pdev_array[] = {
+    [0] = {
+        .name = "pcdev-A1x",
+        .driver_data = PCDEVA1X
+    },
+
+    [1] = {
+        .name = "pcdev-A2x",
+        .driver_data = PCDEVA2X
+    },
+
+    [2] = {
+        .name = "pcdev-A3x",
+        .driver_data = PCDEVA3X
+    },
+
+    [3] = {
+        .name = "pcdev-A4x",
+        .driver_data = PCDEVA4X
+    },
+
+    { }
+};
+
 // Create the private data structure for the device
 struct chardev_pvtdata {
     struct platform_dev_data platform_pvtdata;
@@ -106,12 +168,15 @@ int char_platform_probe(struct platform_device *pdevice) {
     pr_info("Device size: %d\n", dev_data->platform_pvtdata.size);
     pr_info("Device permission: %d\n", dev_data->platform_pvtdata.permission);
 
+    pr_info("Config_item 1 = %d\n", pdev_data[pdevice->id_entry->driver_data].config_item1);
+    pr_info("Config_item 2 = %d\n", pdev_data[pdevice->id_entry->driver_data].config_item2);
+
     // Dynamically allocate the memory of the buffer in Device pvt data structure
     //dev_data->buffer = kzalloc(sizeof(dev_data->platform_pvtdata.size), GFP_KERNEL);
     dev_data->buffer = devm_kzalloc(&pdevice->dev, sizeof(dev_data->platform_pvtdata.size), GFP_KERNEL);
     if(!dev_data->buffer) {
         pr_info("Failed to allocate for the buffer.\n");
-        devm_kfree(&pdevice->dev, dev_data);
+        //devm_kfree(&pdevice->dev, dev_data);
         return -ENOMEM;
     }
 
@@ -125,8 +190,8 @@ int char_platform_probe(struct platform_device *pdevice) {
     ret = cdev_add(&dev_data->char_cdev, dev_data->dev_num, 1);
     if(ret < 0) {
         pr_info("cdev for the device failed.\n");
-        devm_kfree(&pdevice->dev, dev_data->buffer);
-        devm_kfree(&pdevice->dev, dev_data);
+        //devm_kfree(&pdevice->dev, dev_data->buffer);
+        //devm_kfree(&pdevice->dev, dev_data);
         return ret;
     }
 
@@ -156,27 +221,6 @@ int  char_platform_remove(struct platform_device *pdevice) {
     pr_info("A device is removed.\n");
     return 0;
 }
-
-// Initialize the structure array for the device id matching.
-struct platform_device_id pdev_array[] = {
-    [0] = {
-        .name = "pcdev-A1x"
-    },
-
-    [1] = {
-        .name = "pcdev-A2x"
-    },
-
-    [2] = {
-        .name = "pcdev-A3x"
-    },
-
-    [3] = {
-        .name = "pcdev-A4x"
-    },
-
-    { }
-};
 
 // Initialize the platform driver structure.
 struct platform_driver chardev_platform = {
